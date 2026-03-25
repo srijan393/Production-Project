@@ -14,6 +14,11 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 
 @RestController
+@CrossOrigin(origins = {
+        "http://localhost:3000",
+        "https://test1-b157c.web.app",
+        "https://test1-b157c.firebaseapp.com"
+})
 public class PostController {
 
     private final PostService postService;
