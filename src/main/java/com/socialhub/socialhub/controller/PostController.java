@@ -47,6 +47,7 @@ public class PostController {
 
     @GetMapping("/posts/{id}/comments")
     public List<Comment> getComments(@PathVariable Long id) {
+        postService.getPost(id);
         return commentService.getComments(id);
     }
 

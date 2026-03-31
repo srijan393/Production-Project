@@ -27,20 +27,20 @@ public class CommentService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not authenticated");
         }
 
-        if (request.getContent() == null || request.getContent().trim().length() < 2) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Comment too short");
+        if (request.getContent() == null || request.getContent().trim().length() < 3) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Answer must be at least 3 characters");
         }
 
-        Comment c = new Comment();
-        c.setPostId(postId);
-        c.setContent(request.getContent().trim());
-        c.setAuthorUsername(username);
+        Comment comment = new Comment();
+        comment.setPostId(postId);
+        comment.setContent(request.getContent().trim());
+        comment.setAuthorUsername(username);
 
-        return commentRepository.save(c);
+        return commentRepository.save(comment);
     }
 
-    public Comment getComment(Long commentId) {
-        return commentRepository.findById(commentId)
+    public Comment getComment(Long id) {
+        return commentRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comment not found"));
     }
 }

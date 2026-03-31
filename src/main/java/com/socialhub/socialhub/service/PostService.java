@@ -24,15 +24,15 @@ public class PostService {
 
     public Post createPost(CreatePostRequest request, String username) {
         if (username == null || username.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not authenticated");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login first");
         }
 
         if (request.getTitle() == null || request.getTitle().trim().length() < 5) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Title too short");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Title must be at least 5 characters");
         }
 
         if (request.getBody() == null || request.getBody().trim().length() < 10) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Body too short");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Question details must be at least 10 characters");
         }
 
         Post post = new Post();
