@@ -39,13 +39,16 @@ public class AuthService {
 
         validatePassword(request.getPassword());
 
-        if (userRepository.findByUsername(request.getUsername().trim()).isPresent()) {
+        String normalizedUsername = request.getUsername().trim().toLowerCase();
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+
+        if (userRepository.findByUsernameIgnoreCase(normalizedUsername).isPresent()) {
             throw new RuntimeException("Username already exists");
         }
 
         User user = new User();
-        user.setUsername(request.getUsername().trim());
-        user.setEmail(request.getEmail().trim());
+        user.setUsername(normalizedUsername);
+        user.setEmail(normalizedEmail);
         user.setFullName(request.getFullName().trim());
         user.setRole("USER");
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
@@ -56,7 +59,17 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByUsername(request.getUsername())
+        if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
+            throw new RuntimeException("Username is required");
+        }
+
+        if (request.getPassword() == null || request.getPassword().isEmpty()) {
+            throw new RuntimeException("Password is required");
+        }
+
+        String normalizedUsername = request.getUsername().trim().toLowerCase();
+
+        User user = userRepository.findByUsernameIgnoreCase(normalizedUsername)
                 .orElseThrow(() -> new RuntimeException("Username not found"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {

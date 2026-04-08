@@ -5,6 +5,7 @@ import com.socialhub.socialhub.dto.LoginRequest;
 import com.socialhub.socialhub.dto.SignupRequest;
 import com.socialhub.socialhub.service.AuthService;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -33,8 +34,7 @@ public class AuthController {
     }
 
     @ExceptionHandler(RuntimeException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public String handleRuntimeException(RuntimeException ex) {
-        return ex.getMessage();
+    public ResponseEntity<String> handleRuntimeException(RuntimeException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
     }
 }
