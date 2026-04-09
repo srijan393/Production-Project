@@ -9,6 +9,8 @@ import com.socialhub.socialhub.security.JwtService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class AuthService {
 
@@ -42,7 +44,8 @@ public class AuthService {
         String normalizedUsername = request.getUsername().trim().toLowerCase();
         String normalizedEmail = request.getEmail().trim().toLowerCase();
 
-        if (userRepository.findByUsernameIgnoreCase(normalizedUsername).isPresent()) {
+        List<User> existingUsers = userRepository.findAllByUsernameIgnoreCase(normalizedUsername);
+        if (!existingUsers.isEmpty()) {
             throw new RuntimeException("Username already exists");
         }
 
@@ -69,8 +72,17 @@ public class AuthService {
 
         String normalizedUsername = request.getUsername().trim().toLowerCase();
 
-        User user = userRepository.findByUsernameIgnoreCase(normalizedUsername)
-                .orElseThrow(() -> new RuntimeException("Username not found"));
+        List<User> users = userRepository.findAllByUsernameIgnoreCase(normalizedUsername);
+
+        if (users.isEmpty()) {
+            throw new RuntimeException("Username not found");
+        }
+
+        if (users.size() > 1) {
+            throw new RuntimeException("Duplicate users found. Contact support.");
+        }
+
+        User user = users.get(0);
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new RuntimeException("Password is incorrect");
