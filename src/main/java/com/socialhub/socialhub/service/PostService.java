@@ -13,9 +13,11 @@ import java.util.List;
 public class PostService {
 
     private final PostRepository postRepository;
+    private final OpenAiService openAiService;
 
-    public PostService(PostRepository postRepository) {
+    public PostService(PostRepository postRepository, OpenAiService openAiService) {
         this.postRepository = postRepository;
+        this.openAiService = openAiService;
     }
 
     public List<Post> getPosts() {
@@ -34,6 +36,8 @@ public class PostService {
         if (request.getBody() == null || request.getBody().trim().length() < 10) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Question details must be at least 10 characters");
         }
+
+        openAiService.moderateText(request.getTitle() + "\n" + request.getBody());
 
         Post post = new Post();
         post.setTitle(request.getTitle().trim());
