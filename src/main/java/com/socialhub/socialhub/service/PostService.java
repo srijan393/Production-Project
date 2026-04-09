@@ -37,7 +37,11 @@ public class PostService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Question details must be at least 10 characters");
         }
 
-        openAiService.moderateText(request.getTitle() + "\n" + request.getBody());
+        try {
+            openAiService.moderateText(request.getTitle() + "\n" + request.getBody());
+        } catch (RuntimeException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
 
         Post post = new Post();
         post.setTitle(request.getTitle().trim());
