@@ -25,8 +25,13 @@ public class PostService {
     }
 
     public Post getPost(Long id) {
+        System.out.println("FETCHING POST ID: " + id);
+
         return postRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
+                .orElseThrow(() -> {
+                    System.out.println("POST NOT FOUND FOR ID: " + id);
+                    return new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found");
+                });
     }
 
     public Post createPost(CreatePostRequest request, String username) {
