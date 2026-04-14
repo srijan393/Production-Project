@@ -1,5 +1,6 @@
 package com.socialhub.socialhub.security;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
@@ -37,14 +38,35 @@ public class JwtService {
                 .compact();
     }
 
+    // ✅ NEW METHOD (required)
+    public String extractUsername(String token) {
+        return getClaims(token).getSubject();
+    }
+
+    // ✅ NEW METHOD (required)
+    public boolean isTokenValid(String token, String username) {
+        final String extractedUsername = extractUsername(token);
+        return extractedUsername.equals(username) && !isTokenExpired(token);
+    }
+
+    private boolean isTokenExpired(String token) {
+        return getClaims(token).getExpiration().before(new Date());
+    }
+
+    private Claims getClaims(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
+
     public String getUsername(String token) {
-        return Jwts.parserBuilder().setSigningKey(key).build()
-                .parseClaimsJws(token).getBody().getSubject();
+        return extractUsername(token);
     }
 
     public String getRole(String token) {
-        Object role = Jwts.parserBuilder().setSigningKey(key).build()
-                .parseClaimsJws(token).getBody().get("role");
+        Object role = getClaims(token).get("role");
         return role == null ? "" : role.toString();
     }
 }
