@@ -27,12 +27,15 @@ public class CommentService {
     }
 
     public List<Comment> getComments(Long postId) {
+        postRepository.findById(postId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
+
         return commentRepository.findByPostIdOrderByCreatedAtAsc(postId);
     }
 
     public Comment addComment(Long postId, CreateCommentRequest request, String username) {
         if (username == null || username.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not authenticated");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login first");
         }
 
         if (request.getContent() == null || request.getContent().trim().length() < 3) {
@@ -41,6 +44,9 @@ public class CommentService {
 
         openAiService.moderateText(request.getContent());
 
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
+
         Comment comment = new Comment();
         comment.setPostId(postId);
         comment.setContent(request.getContent().trim());
@@ -48,15 +54,15 @@ public class CommentService {
 
         Comment savedComment = commentRepository.save(comment);
 
-        Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
-
         List<Comment> comments = commentRepository.findByPostIdOrderByCreatedAtAsc(postId);
         List<String> answerTexts = comments.stream()
                 .map(Comment::getContent)
                 .toList();
 
-        int bestIndex = openAiService.chooseBestAnswer(post.getTitle() + "\n" + post.getBody(), answerTexts);
+        int bestIndex = openAiService.chooseBestAnswer(
+                post.getTitle() + "\n" + post.getBody(),
+                answerTexts
+        );
 
         if (bestIndex > 0 && bestIndex <= comments.size()) {
             post.setBestCommentId(comments.get(bestIndex - 1).getId());
