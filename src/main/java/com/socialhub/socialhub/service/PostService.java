@@ -24,6 +24,11 @@ public class PostService {
         return postRepository.findAllByOrderByCreatedAtDesc();
     }
 
+    public Post getPost(Long id) {
+        return postRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
+    }
+
     public Post createPost(CreatePostRequest request, String username) {
         if (username == null || username.isBlank()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login first");
@@ -37,11 +42,7 @@ public class PostService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Question details must be at least 10 characters");
         }
 
-        try {
-            openAiService.moderateText(request.getTitle() + "\n" + request.getBody());
-        } catch (RuntimeException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
-        }
+        openAiService.moderateText(request.getTitle() + "\n" + request.getBody());
 
         Post post = new Post();
         post.setTitle(request.getTitle().trim());
@@ -51,9 +52,12 @@ public class PostService {
         return postRepository.save(post);
     }
 
-    public Post getPost(Long id) {
-        return postRepository.findById(id)
+    public Post pinBestAnswer(Long postId, Long commentId) {
+        Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
+
+        post.setBestCommentId(commentId);
+        return postRepository.save(post);
     }
 
     public Post save(Post post) {
