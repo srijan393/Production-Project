@@ -1,5 +1,6 @@
 package com.socialhub.socialhub.controller;
 
+import com.socialhub.socialhub.dto.UserProfileResponse;
 import com.socialhub.socialhub.model.User;
 import com.socialhub.socialhub.repository.UserRepository;
 import org.springframework.http.HttpStatus;
@@ -23,14 +24,21 @@ public class UserController {
     }
 
     @GetMapping("/users/me")
-    public User getCurrentUser(Authentication authentication) {
+    public UserProfileResponse getCurrentUser(Authentication authentication) {
         if (authentication == null || authentication.getName() == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not authenticated");
         }
 
         String username = authentication.getName();
 
-        return userRepository.findByUsernameIgnoreCase(username)
+        User user = userRepository.findByUsernameIgnoreCase(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        return new UserProfileResponse(
+                user.getFullName(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getRole()
+        );
     }
 }
