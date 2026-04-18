@@ -34,7 +34,9 @@ public class SecurityConfig {
 
                         .requestMatchers("/auth/signup", "/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/change-password").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/auth/update-profile").authenticated()
+
+                        // quick fix
+                        .requestMatchers(HttpMethod.POST, "/auth/update-profile").permitAll()
 
                         .requestMatchers(HttpMethod.GET, "/posts/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/comments/**").permitAll()
