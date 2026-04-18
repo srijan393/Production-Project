@@ -1,11 +1,13 @@
 package com.socialhub.socialhub.controller;
 
 import com.socialhub.socialhub.dto.AuthResponse;
+import com.socialhub.socialhub.dto.ChangePasswordRequest;
 import com.socialhub.socialhub.dto.LoginRequest;
 import com.socialhub.socialhub.dto.SignupRequest;
 import com.socialhub.socialhub.service.AuthService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -31,6 +33,15 @@ public class AuthController {
     @PostMapping("/login")
     public AuthResponse login(@RequestBody LoginRequest request) {
         return authService.login(request);
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<String> changePassword(
+            Authentication authentication,
+            @RequestBody ChangePasswordRequest request
+    ) {
+        authService.changePassword(authentication, request);
+        return ResponseEntity.ok("Password changed successfully");
     }
 
     @ExceptionHandler(RuntimeException.class)

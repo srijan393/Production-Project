@@ -1,11 +1,13 @@
 package com.socialhub.socialhub.service;
 
 import com.socialhub.socialhub.dto.AuthResponse;
+import com.socialhub.socialhub.dto.ChangePasswordRequest;
 import com.socialhub.socialhub.dto.LoginRequest;
 import com.socialhub.socialhub.dto.SignupRequest;
 import com.socialhub.socialhub.model.User;
 import com.socialhub.socialhub.repository.UserRepository;
 import com.socialhub.socialhub.security.JwtService;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -49,6 +51,10 @@ public class AuthService {
             throw new RuntimeException("Username already exists");
         }
 
+        userRepository.findByEmailIgnoreCase(normalizedEmail).ifPresent(existing -> {
+            throw new RuntimeException("Email already exists");
+        });
+
         User user = new User();
         user.setUsername(normalizedUsername);
         user.setEmail(normalizedEmail);
@@ -90,6 +96,51 @@ public class AuthService {
 
         String token = jwtService.generateToken(user.getUsername(), user.getRole());
         return new AuthResponse(token, user.getRole(), "Login successful");
+    }
+
+    public void changePassword(Authentication authentication, ChangePasswordRequest request) {
+        if (authentication == null || authentication.getName() == null) {
+            throw new RuntimeException("Not authenticated");
+        }
+
+        String username = authentication.getName().trim().toLowerCase();
+
+        List<User> users = userRepository.findAllByUsernameIgnoreCase(username);
+
+        if (users.isEmpty()) {
+            throw new RuntimeException("User not found");
+        }
+
+        User user = users.get(0);
+
+        if (request.getCurrentPassword() == null || request.getCurrentPassword().isBlank()) {
+            throw new RuntimeException("Current password is required");
+        }
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+            throw new RuntimeException("Current password is incorrect");
+        }
+
+        if (request.getNewPassword() == null || request.getNewPassword().isBlank()) {
+            throw new RuntimeException("New password is required");
+        }
+
+        if (request.getConfirmNewPassword() == null || request.getConfirmNewPassword().isBlank()) {
+            throw new RuntimeException("Please confirm your new password");
+        }
+
+        if (!request.getNewPassword().equals(request.getConfirmNewPassword())) {
+            throw new RuntimeException("New passwords do not match");
+        }
+
+        if (request.getCurrentPassword().equals(request.getNewPassword())) {
+            throw new RuntimeException("New password must be different from current password");
+        }
+
+        validatePassword(request.getNewPassword());
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
     }
 
     private void validatePassword(String password) {
