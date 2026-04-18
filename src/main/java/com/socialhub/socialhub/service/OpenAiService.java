@@ -2,6 +2,7 @@ package com.socialhub.socialhub.service;
 
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -43,7 +44,7 @@ public class OpenAiService {
             }
 
             if (!cleaned.contains("ALLOW")) {
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI moderation returned invalid result");
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI moderation returned invalid result: " + result);
             }
 
         } catch (ResponseStatusException ex) {
@@ -102,6 +103,7 @@ public class OpenAiService {
         Map<String, Object> body = Map.of(
                 "model", "gpt-4o-mini",
                 "messages", List.of(
+                        Map.of("role", "system", "content", "You are a strict moderation and ranking assistant. Follow the user's instruction exactly."),
                         Map.of("role", "user", "content", prompt)
                 ),
                 "temperature", 0
@@ -109,32 +111,48 @@ public class OpenAiService {
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
 
-        ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+        try {
+            System.out.println("OPENAI_API_KEY PRESENT: " + (apiKey != null && !apiKey.isBlank()));
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+            System.out.println("OPENAI RAW RESPONSE: " + response.getBody());
 
-        if (response.getBody() == null) {
-            throw new RuntimeException("OpenAI response body is null");
+            if (response.getBody() == null) {
+                throw new RuntimeException("OpenAI response body is null");
+            }
+
+            Object choicesObj = response.getBody().get("choices");
+            if (!(choicesObj instanceof List<?> choices) || choices.isEmpty()) {
+                throw new RuntimeException("OpenAI response has no choices");
+            }
+
+            Object firstChoice = choices.get(0);
+            if (!(firstChoice instanceof Map<?, ?> choiceMap)) {
+                throw new RuntimeException("OpenAI choice format invalid");
+            }
+
+            Object messageObj = choiceMap.get("message");
+            if (!(messageObj instanceof Map<?, ?> messageMap)) {
+                throw new RuntimeException("OpenAI message format invalid");
+            }
+
+            Object contentObj = messageMap.get("content");
+            if (contentObj == null) {
+                throw new RuntimeException("OpenAI content is null");
+            }
+
+            return contentObj.toString().trim();
+
+        } catch (HttpStatusCodeException ex) {
+            ex.printStackTrace();
+            String responseBody = ex.getResponseBodyAsString();
+            System.out.println("OPENAI ERROR BODY: " + responseBody);
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "OpenAI API error: " + ex.getStatusCode() + " - " + responseBody
+            );
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            throw ex;
         }
-
-        Object choicesObj = response.getBody().get("choices");
-        if (!(choicesObj instanceof List<?> choices) || choices.isEmpty()) {
-            throw new RuntimeException("OpenAI response has no choices");
-        }
-
-        Object choiceObj = choices.get(0);
-        if (!(choiceObj instanceof Map<?, ?> choiceMap)) {
-            throw new RuntimeException("OpenAI choice format invalid");
-        }
-
-        Object messageObj = choiceMap.get("message");
-        if (!(messageObj instanceof Map<?, ?> messageMap)) {
-            throw new RuntimeException("OpenAI message format invalid");
-        }
-
-        Object contentObj = messageMap.get("content");
-        if (contentObj == null) {
-            throw new RuntimeException("OpenAI content is null");
-        }
-
-        return contentObj.toString().trim();
     }
 }
