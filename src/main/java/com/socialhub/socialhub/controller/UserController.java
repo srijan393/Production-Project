@@ -11,7 +11,8 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @CrossOrigin(origins = {
         "http://localhost:3000",
-        "https://test1-b157c.web.app"
+        "https://test1-b157c.web.app",
+        "https://test1-b157c.firebaseapp.com"
 })
 public class UserController {
 
@@ -33,7 +34,7 @@ public class UserController {
         );
     }
 
-    @PutMapping("/users/me")
+    @PostMapping("/users/update-profile")
     public UserProfileResponse updateCurrentUser(
             Authentication authentication,
             @RequestBody UserProfileResponse request
