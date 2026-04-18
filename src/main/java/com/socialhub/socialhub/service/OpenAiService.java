@@ -1,53 +1,57 @@
 package com.socialhub.socialhub.service;
 
-import com.openai.client.OpenAIClient;
-import com.openai.client.okhttp.OpenAIOkHttpClient;
-import com.openai.models.chat.completions.ChatCompletion;
-import com.openai.models.chat.completions.ChatCompletionCreateParams;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class OpenAiService {
 
-    private final OpenAIClient client;
-
-    public OpenAiService() {
-        try {
-            this.client = OpenAIOkHttpClient.fromEnv();
-        } catch (Exception e) {
-            throw new RuntimeException("OPENAI_API_KEY is missing or invalid in Railway");
-        }
-    }
+    private final String apiKey = System.getenv("OPENAI_API_KEY");
+    private final RestTemplate restTemplate = new RestTemplate();
 
     public void moderateText(String text) {
-        String prompt = """
-                Check if this content contains pornographic, sexual, explicit adult, 18+, or clearly unsafe inappropriate content.
-                Reply with ONLY one word:
-                ALLOW
-                or
-                BLOCK
-
-                Content:
-                """ + text;
-
-        String result = askOpenAI(prompt);
-
-        if (result == null || result.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI moderation returned empty result");
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "OPENAI_API_KEY is missing on Railway");
         }
 
-        String cleaned = result.trim().toUpperCase();
+        try {
+            String prompt = """
+                    Check if this content contains pornographic, sexual, explicit adult, 18+, or unsafe inappropriate content.
+                    Reply with ONLY one word:
+                    ALLOW
+                    or
+                    BLOCK
 
-        if (cleaned.contains("BLOCK")) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Content blocked by AI moderation");
-        }
+                    Content:
+                    """ + text;
 
-        if (!cleaned.contains("ALLOW")) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI moderation returned invalid result: " + result);
+            String result = callOpenAI(prompt);
+
+            if (result == null || result.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI moderation returned empty result");
+            }
+
+            String cleaned = result.trim().toUpperCase();
+
+            if (cleaned.contains("BLOCK")) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Content blocked by AI moderation");
+            }
+
+            if (!cleaned.contains("ALLOW")) {
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI moderation returned invalid result: " + result);
+            }
+
+        } catch (ResponseStatusException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI moderation failed: " + ex.getMessage());
         }
     }
 
@@ -56,52 +60,99 @@ public class OpenAiService {
             return -1;
         }
 
-        StringBuilder prompt = new StringBuilder();
-        prompt.append("Question:\n").append(question).append("\n\nAnswers:\n");
-
-        for (int i = 0; i < answers.size(); i++) {
-            prompt.append(i + 1).append(". ").append(answers.get(i)).append("\n");
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "OPENAI_API_KEY is missing on Railway");
         }
 
-        prompt.append("\nReturn ONLY the number of the best answer.");
-
         try {
-            String result = askOpenAI(prompt.toString());
-            String digits = result == null ? "" : result.replaceAll("[^0-9]", "");
+            StringBuilder prompt = new StringBuilder();
+            prompt.append("Question:\n").append(question).append("\n\nAnswers:\n");
+
+            for (int i = 0; i < answers.size(); i++) {
+                prompt.append(i + 1).append(". ").append(answers.get(i)).append("\n");
+            }
+
+            prompt.append("\nReturn ONLY the number of the best answer.");
+
+            String result = callOpenAI(prompt.toString());
+
+            if (result == null || result.isBlank()) {
+                return 1;
+            }
+
+            String digits = result.replaceAll("[^0-9]", "");
             if (digits.isBlank()) {
                 return 1;
             }
+
             return Integer.parseInt(digits);
-        } catch (Exception e) {
-            e.printStackTrace();
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
             return 1;
         }
     }
 
-    private String askOpenAI(String prompt) {
+    private String callOpenAI(String prompt) {
+        String url = "https://api.openai.com/v1/chat/completions";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(apiKey);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        Map<String, Object> body = Map.of(
+                "model", "gpt-4o-mini",
+                "messages", List.of(
+                        Map.of("role", "system", "content", "You are a strict moderation and ranking assistant. Follow the user's instruction exactly."),
+                        Map.of("role", "user", "content", prompt)
+                ),
+                "temperature", 0
+        );
+
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+
         try {
-            ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
-                    .model("gpt-4o-mini")
-                    .addSystemMessage("You are a strict moderation and ranking assistant. Follow the user's instruction exactly.")
-                    .addUserMessage(prompt)
-                    .temperature(0.0)
-                    .build();
+            System.out.println("OPENAI_API_KEY PRESENT: " + (apiKey != null && !apiKey.isBlank()));
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+            System.out.println("OPENAI RAW RESPONSE: " + response.getBody());
 
-            ChatCompletion completion = client.chat().completions().create(params);
-
-            if (completion.choices().isEmpty()
-                    || completion.choices().get(0).message() == null
-                    || completion.choices().get(0).message().content().isEmpty()) {
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "OpenAI returned no content");
+            if (response.getBody() == null) {
+                throw new RuntimeException("OpenAI response body is null");
             }
 
-            return completion.choices().get(0).message().content().get(0).text().orElse("").trim();
+            Object choicesObj = response.getBody().get("choices");
+            if (!(choicesObj instanceof List<?> choices) || choices.isEmpty()) {
+                throw new RuntimeException("OpenAI response has no choices");
+            }
 
-        } catch (ResponseStatusException e) {
-            throw e;
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "OpenAI call failed: " + e.getMessage());
+            Object firstChoice = choices.get(0);
+            if (!(firstChoice instanceof Map<?, ?> choiceMap)) {
+                throw new RuntimeException("OpenAI choice format invalid");
+            }
+
+            Object messageObj = choiceMap.get("message");
+            if (!(messageObj instanceof Map<?, ?> messageMap)) {
+                throw new RuntimeException("OpenAI message format invalid");
+            }
+
+            Object contentObj = messageMap.get("content");
+            if (contentObj == null) {
+                throw new RuntimeException("OpenAI content is null");
+            }
+
+            return contentObj.toString().trim();
+
+        } catch (HttpStatusCodeException ex) {
+            ex.printStackTrace();
+            String responseBody = ex.getResponseBodyAsString();
+            System.out.println("OPENAI ERROR BODY: " + responseBody);
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "OpenAI API error: " + ex.getStatusCode() + " - " + responseBody
+            );
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            throw ex;
         }
     }
 }
