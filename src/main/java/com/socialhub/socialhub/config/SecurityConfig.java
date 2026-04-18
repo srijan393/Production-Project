@@ -43,7 +43,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/posts/*/best-answer/*").authenticated()
 
                         .requestMatchers(HttpMethod.GET, "/users/me").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/users/update-profile").authenticated()
+
+                        // quick fix: let request reach controller
+                        .requestMatchers(HttpMethod.POST, "/users/update-profile").permitAll()
 
                         .anyRequest().authenticated()
                 )
