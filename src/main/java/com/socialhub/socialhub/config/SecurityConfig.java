@@ -1,5 +1,6 @@
-package com.socialhub.socialhub.security;
+package com.socialhub.socialhub.config;
 
+import com.socialhub.socialhub.security.JwtAuthFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -35,7 +36,7 @@ public class SecurityConfig {
                         .requestMatchers("/auth/signup", "/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/change-password").authenticated()
 
-                        // quick fix
+                        // let controller handle auth check
                         .requestMatchers(HttpMethod.POST, "/auth/update-profile").permitAll()
 
                         .requestMatchers(HttpMethod.GET, "/posts/**").permitAll()
