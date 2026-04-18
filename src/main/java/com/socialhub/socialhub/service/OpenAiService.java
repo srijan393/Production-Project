@@ -8,9 +8,6 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.Map;
 
-import static org.springframework.http.HttpStatus.BAD_GATEWAY;
-import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
-
 @Service
 public class OpenAiService {
 
@@ -19,12 +16,12 @@ public class OpenAiService {
 
     public void moderateText(String text) {
         if (apiKey == null || apiKey.isBlank()) {
-            throw new ResponseStatusException(SERVICE_UNAVAILABLE, "OPENAI_API_KEY is missing on Railway");
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "OPENAI_API_KEY is missing on Railway");
         }
 
         try {
             String prompt = """
-                    Check if this content contains sexual/18+ content, explicit adult content, pornographic content, or clearly unsafe inappropriate content.
+                    Check if this content contains pornographic, sexual, explicit adult, 18+, or unsafe inappropriate content.
                     Reply with ONLY one word:
                     ALLOW
                     or
@@ -36,7 +33,7 @@ public class OpenAiService {
             String result = callOpenAI(prompt);
 
             if (result == null || result.isBlank()) {
-                throw new ResponseStatusException(BAD_GATEWAY, "AI moderation returned empty result");
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI moderation returned empty result");
             }
 
             String cleaned = result.trim().toUpperCase();
@@ -46,14 +43,14 @@ public class OpenAiService {
             }
 
             if (!cleaned.contains("ALLOW")) {
-                throw new ResponseStatusException(BAD_GATEWAY, "AI moderation returned invalid result: " + result);
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI moderation returned invalid result");
             }
 
         } catch (ResponseStatusException ex) {
             throw ex;
         } catch (Exception ex) {
             ex.printStackTrace();
-            throw new ResponseStatusException(BAD_GATEWAY, "AI moderation failed: " + ex.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI moderation failed: " + ex.getMessage());
         }
     }
 
@@ -63,7 +60,7 @@ public class OpenAiService {
         }
 
         if (apiKey == null || apiKey.isBlank()) {
-            throw new ResponseStatusException(SERVICE_UNAVAILABLE, "OPENAI_API_KEY is missing on Railway");
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "OPENAI_API_KEY is missing on Railway");
         }
 
         try {
