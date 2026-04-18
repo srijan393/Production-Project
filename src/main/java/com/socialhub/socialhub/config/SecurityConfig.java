@@ -32,22 +32,15 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
                         .requestMatchers("/auth/signup", "/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/change-password").authenticated()
-
-                        // let controller handle auth check
                         .requestMatchers(HttpMethod.POST, "/auth/update-profile").permitAll()
-
                         .requestMatchers(HttpMethod.GET, "/posts/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/comments/**").permitAll()
-
                         .requestMatchers(HttpMethod.POST, "/posts").authenticated()
                         .requestMatchers(HttpMethod.POST, "/posts/*/comments").authenticated()
                         .requestMatchers(HttpMethod.POST, "/posts/*/best-answer/*").authenticated()
-
                         .requestMatchers(HttpMethod.GET, "/users/me").authenticated()
-
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(
