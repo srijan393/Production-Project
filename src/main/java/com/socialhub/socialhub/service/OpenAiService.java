@@ -3,9 +3,13 @@ package com.socialhub.socialhub.service;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
+
+import static org.springframework.http.HttpStatus.BAD_GATEWAY;
+import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
 
 @Service
 public class OpenAiService {
@@ -13,48 +17,85 @@ public class OpenAiService {
     private final String apiKey = System.getenv("OPENAI_API_KEY");
     private final RestTemplate restTemplate = new RestTemplate();
 
-    // 🔴 MODERATION
     public void moderateText(String text) {
-
         if (apiKey == null || apiKey.isBlank()) {
-            throw new RuntimeException("AI key missing");
+            throw new ResponseStatusException(SERVICE_UNAVAILABLE, "OPENAI_API_KEY is missing on Railway");
         }
-
-        String prompt = "Check if this content is inappropriate or 18+. Reply ONLY 'ALLOW' or 'BLOCK'.\n\n" + text;
-
-        String result = callOpenAI(prompt);
-
-        if (result.toUpperCase().contains("BLOCK")) {
-            throw new RuntimeException("Content is not allowed (AI moderation)");
-        }
-    }
-
-    // 🟢 BEST ANSWER
-    public int chooseBestAnswer(String question, List<String> answers) {
-
-        if (answers == null || answers.isEmpty()) return -1;
-
-        StringBuilder prompt = new StringBuilder();
-        prompt.append("Question:\n").append(question).append("\n\nAnswers:\n");
-
-        for (int i = 0; i < answers.size(); i++) {
-            prompt.append(i + 1).append(". ").append(answers.get(i)).append("\n");
-        }
-
-        prompt.append("\nReturn ONLY the number of the best answer.");
-
-        String result = callOpenAI(prompt.toString());
 
         try {
-            return Integer.parseInt(result.replaceAll("[^0-9]", ""));
-        } catch (Exception e) {
-            return 1; // fallback
+            String prompt = """
+                    Check if this content contains sexual/18+ content, explicit adult content, pornographic content, or clearly unsafe inappropriate content.
+                    Reply with ONLY one word:
+                    ALLOW
+                    or
+                    BLOCK
+
+                    Content:
+                    """ + text;
+
+            String result = callOpenAI(prompt);
+
+            if (result == null || result.isBlank()) {
+                throw new ResponseStatusException(BAD_GATEWAY, "AI moderation returned empty result");
+            }
+
+            String cleaned = result.trim().toUpperCase();
+
+            if (cleaned.contains("BLOCK")) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Content blocked by AI moderation");
+            }
+
+            if (!cleaned.contains("ALLOW")) {
+                throw new ResponseStatusException(BAD_GATEWAY, "AI moderation returned invalid result: " + result);
+            }
+
+        } catch (ResponseStatusException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            throw new ResponseStatusException(BAD_GATEWAY, "AI moderation failed: " + ex.getMessage());
         }
     }
 
-    // 🔧 COMMON CALL
-    private String callOpenAI(String prompt) {
+    public int chooseBestAnswer(String question, List<String> answers) {
+        if (answers == null || answers.isEmpty()) {
+            return -1;
+        }
 
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new ResponseStatusException(SERVICE_UNAVAILABLE, "OPENAI_API_KEY is missing on Railway");
+        }
+
+        try {
+            StringBuilder prompt = new StringBuilder();
+            prompt.append("Question:\n").append(question).append("\n\nAnswers:\n");
+
+            for (int i = 0; i < answers.size(); i++) {
+                prompt.append(i + 1).append(". ").append(answers.get(i)).append("\n");
+            }
+
+            prompt.append("\nReturn ONLY the number of the best answer.");
+
+            String result = callOpenAI(prompt.toString());
+
+            if (result == null || result.isBlank()) {
+                return 1;
+            }
+
+            String digits = result.replaceAll("[^0-9]", "");
+            if (digits.isBlank()) {
+                return 1;
+            }
+
+            return Integer.parseInt(digits);
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return 1;
+        }
+    }
+
+    private String callOpenAI(String prompt) {
         String url = "https://api.openai.com/v1/chat/completions";
 
         HttpHeaders headers = new HttpHeaders();
@@ -73,9 +114,30 @@ public class OpenAiService {
 
         ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
 
-        Map choice = (Map) ((List) response.getBody().get("choices")).get(0);
-        Map message = (Map) choice.get("message");
+        if (response.getBody() == null) {
+            throw new RuntimeException("OpenAI response body is null");
+        }
 
-        return message.get("content").toString().trim();
+        Object choicesObj = response.getBody().get("choices");
+        if (!(choicesObj instanceof List<?> choices) || choices.isEmpty()) {
+            throw new RuntimeException("OpenAI response has no choices");
+        }
+
+        Object choiceObj = choices.get(0);
+        if (!(choiceObj instanceof Map<?, ?> choiceMap)) {
+            throw new RuntimeException("OpenAI choice format invalid");
+        }
+
+        Object messageObj = choiceMap.get("message");
+        if (!(messageObj instanceof Map<?, ?> messageMap)) {
+            throw new RuntimeException("OpenAI message format invalid");
+        }
+
+        Object contentObj = messageMap.get("content");
+        if (contentObj == null) {
+            throw new RuntimeException("OpenAI content is null");
+        }
+
+        return contentObj.toString().trim();
     }
 }

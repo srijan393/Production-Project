@@ -25,13 +25,8 @@ public class PostService {
     }
 
     public Post getPost(Long id) {
-        System.out.println("FETCHING POST ID: " + id);
-
         return postRepository.findById(id)
-                .orElseThrow(() -> {
-                    System.out.println("POST NOT FOUND FOR ID: " + id);
-                    return new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found");
-                });
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
     }
 
     public Post createPost(CreatePostRequest request, String username) {
@@ -47,7 +42,14 @@ public class PostService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Question details must be at least 10 characters");
         }
 
-        openAiService.moderateText(request.getTitle() + "\n" + request.getBody());
+        try {
+            openAiService.moderateText(request.getTitle() + "\n" + request.getBody());
+        } catch (ResponseStatusException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI moderation failed");
+        }
 
         Post post = new Post();
         post.setTitle(request.getTitle().trim());
