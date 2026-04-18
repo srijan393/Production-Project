@@ -34,7 +34,7 @@ public class UserController {
         );
     }
 
-    @PostMapping("/users/update-profile")
+    @PostMapping("/auth/update-profile")
     public UserProfileResponse updateCurrentUser(
             Authentication authentication,
             @RequestBody UserProfileResponse request
@@ -42,8 +42,8 @@ public class UserController {
         User user = getAuthenticatedUser(authentication);
 
         String fullName = request.getFullName() == null ? "" : request.getFullName().trim();
-        String username = request.getUsername() == null ? "" : request.getUsername().trim();
-        String email = request.getEmail() == null ? "" : request.getEmail().trim();
+        String username = request.getUsername() == null ? "" : request.getUsername().trim().toLowerCase();
+        String email = request.getEmail() == null ? "" : request.getEmail().trim().toLowerCase();
 
         if (fullName.length() < 2) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Full name must be at least 2 characters");

@@ -34,6 +34,7 @@ public class SecurityConfig {
 
                         .requestMatchers("/auth/signup", "/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/change-password").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/auth/update-profile").authenticated()
 
                         .requestMatchers(HttpMethod.GET, "/posts/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/comments/**").permitAll()
@@ -43,9 +44,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/posts/*/best-answer/*").authenticated()
 
                         .requestMatchers(HttpMethod.GET, "/users/me").authenticated()
-
-                        // quick fix: let request reach controller
-                        .requestMatchers(HttpMethod.POST, "/users/update-profile").permitAll()
 
                         .anyRequest().authenticated()
                 )
