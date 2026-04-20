@@ -5,6 +5,7 @@ import com.socialhub.socialhub.dto.UserProfileResponse;
 import com.socialhub.socialhub.model.Follow;
 import com.socialhub.socialhub.model.User;
 import com.socialhub.socialhub.repository.FollowRepository;
+import com.socialhub.socialhub.repository.PostRepository;
 import com.socialhub.socialhub.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -24,10 +25,16 @@ public class UserController {
 
     private final UserRepository userRepository;
     private final FollowRepository followRepository;
+    private final PostRepository postRepository;
 
-    public UserController(UserRepository userRepository, FollowRepository followRepository) {
+    public UserController(
+            UserRepository userRepository,
+            FollowRepository followRepository,
+            PostRepository postRepository
+    ) {
         this.userRepository = userRepository;
         this.followRepository = followRepository;
+        this.postRepository = postRepository;
     }
 
     @GetMapping("/users/me")
@@ -38,7 +45,12 @@ public class UserController {
                 user.getFullName(),
                 user.getUsername(),
                 user.getEmail(),
-                user.getRole()
+                user.getRole(),
+                user.getBio(),
+                user.getInterests(),
+                followRepository.countByFollowingId(user.getId()),
+                followRepository.countByFollowerId(user.getId()),
+                postRepository.countByAuthorUsernameIgnoreCase(user.getUsername())
         );
     }
 
@@ -52,6 +64,8 @@ public class UserController {
         String fullName = request.getFullName() == null ? "" : request.getFullName().trim();
         String username = request.getUsername() == null ? "" : request.getUsername().trim().toLowerCase();
         String email = request.getEmail() == null ? "" : request.getEmail().trim().toLowerCase();
+        String bio = request.getBio() == null ? "" : request.getBio().trim();
+        String interests = request.getInterests() == null ? "" : request.getInterests().trim();
 
         if (fullName.length() < 2) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Full name must be at least 2 characters");
@@ -80,6 +94,8 @@ public class UserController {
         user.setFullName(fullName);
         user.setUsername(username);
         user.setEmail(email);
+        user.setBio(bio);
+        user.setInterests(interests);
 
         User saved = userRepository.save(user);
 
@@ -87,7 +103,12 @@ public class UserController {
                 saved.getFullName(),
                 saved.getUsername(),
                 saved.getEmail(),
-                saved.getRole()
+                saved.getRole(),
+                saved.getBio(),
+                saved.getInterests(),
+                followRepository.countByFollowingId(saved.getId()),
+                followRepository.countByFollowerId(saved.getId()),
+                postRepository.countByAuthorUsernameIgnoreCase(saved.getUsername())
         );
     }
 
@@ -107,6 +128,28 @@ public class UserController {
                         followRepository.countByFollowingId(user.getId()),
                         followRepository.countByFollowerId(user.getId()),
                         followRepository.existsByFollowerIdAndFollowingId(currentUser.getId(), user.getId())
+                ))
+                .toList();
+    }
+
+    @GetMapping("/users/me/following")
+    public List<DiscoverUserResponse> getMyFollowing(Authentication authentication) {
+        User currentUser = getAuthenticatedUser(authentication);
+
+        return followRepository.findByFollowerId(currentUser.getId()).stream()
+                .map(follow -> userRepository.findById(follow.getFollowingId())
+                        .orElse(null))
+                .filter(user -> user != null)
+                .sorted(Comparator.comparing(User::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                .map(user -> new DiscoverUserResponse(
+                        user.getId(),
+                        user.getFullName(),
+                        user.getUsername(),
+                        user.getBio(),
+                        user.getInterests(),
+                        followRepository.countByFollowingId(user.getId()),
+                        followRepository.countByFollowerId(user.getId()),
+                        true
                 ))
                 .toList();
     }
