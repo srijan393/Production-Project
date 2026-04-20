@@ -1,12 +1,18 @@
 package com.socialhub.socialhub.controller;
 
+import com.socialhub.socialhub.dto.DiscoverUserResponse;
 import com.socialhub.socialhub.dto.UserProfileResponse;
+import com.socialhub.socialhub.model.Follow;
 import com.socialhub.socialhub.model.User;
+import com.socialhub.socialhub.repository.FollowRepository;
 import com.socialhub.socialhub.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.util.Comparator;
+import java.util.List;
 
 @RestController
 @CrossOrigin(origins = {
@@ -17,9 +23,11 @@ import org.springframework.web.server.ResponseStatusException;
 public class UserController {
 
     private final UserRepository userRepository;
+    private final FollowRepository followRepository;
 
-    public UserController(UserRepository userRepository) {
+    public UserController(UserRepository userRepository, FollowRepository followRepository) {
         this.userRepository = userRepository;
+        this.followRepository = followRepository;
     }
 
     @GetMapping("/users/me")
@@ -81,6 +89,61 @@ public class UserController {
                 saved.getEmail(),
                 saved.getRole()
         );
+    }
+
+    @GetMapping("/users/discover")
+    public List<DiscoverUserResponse> discoverUsers(Authentication authentication) {
+        User currentUser = getAuthenticatedUser(authentication);
+
+        return userRepository.findAll().stream()
+                .filter(user -> !user.getId().equals(currentUser.getId()))
+                .sorted(Comparator.comparing(User::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                .map(user -> new DiscoverUserResponse(
+                        user.getId(),
+                        user.getFullName(),
+                        user.getUsername(),
+                        user.getBio(),
+                        user.getInterests(),
+                        followRepository.countByFollowingId(user.getId()),
+                        followRepository.countByFollowerId(user.getId()),
+                        followRepository.existsByFollowerIdAndFollowingId(currentUser.getId(), user.getId())
+                ))
+                .toList();
+    }
+
+    @PostMapping("/users/{userId}/follow")
+    public String followUser(@PathVariable Long userId, Authentication authentication) {
+        User currentUser = getAuthenticatedUser(authentication);
+
+        if (currentUser.getId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You cannot follow yourself");
+        }
+
+        User targetUser = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        boolean alreadyFollowing = followRepository.existsByFollowerIdAndFollowingId(currentUser.getId(), targetUser.getId());
+        if (alreadyFollowing) {
+            return "Already following";
+        }
+
+        Follow follow = new Follow();
+        follow.setFollowerId(currentUser.getId());
+        follow.setFollowingId(targetUser.getId());
+
+        followRepository.save(follow);
+        return "Followed successfully";
+    }
+
+    @DeleteMapping("/users/{userId}/follow")
+    public String unfollowUser(@PathVariable Long userId, Authentication authentication) {
+        User currentUser = getAuthenticatedUser(authentication);
+
+        Follow follow = followRepository.findByFollowerIdAndFollowingId(currentUser.getId(), userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Follow relationship not found"));
+
+        followRepository.delete(follow);
+        return "Unfollowed successfully";
     }
 
     private User getAuthenticatedUser(Authentication authentication) {
