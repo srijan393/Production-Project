@@ -1,11 +1,11 @@
 package com.socialhub.socialhub.service;
 
-import org.springframework.http.*;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
-
+import org.springframework.http.*;
 import java.util.List;
 import java.util.Map;
 
@@ -16,13 +16,25 @@ public class OpenAiService {
     private final RestTemplate restTemplate = new RestTemplate();
 
     public void moderateText(String text) {
+        if (text == null || text.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Content cannot be empty");
+        }
+
         if (apiKey == null || apiKey.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "OPENAI_API_KEY is missing on Railway");
         }
 
         try {
             String prompt = """
-                    Check if this content contains pornographic, sexual, explicit adult, 18+, or unsafe inappropriate content.
+                    Check if the following content is SAFE for a public academic platform.
+
+                    BLOCK if it contains:
+                    - sexual or 18+ content
+                    - abusive language
+                    - profanity or swear words
+                    - hate speech
+                    - offensive or inappropriate content
+
                     Reply with ONLY one word:
                     ALLOW
                     or
@@ -40,7 +52,10 @@ public class OpenAiService {
             String cleaned = result.trim().toUpperCase();
 
             if (cleaned.contains("BLOCK")) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Content blocked by AI moderation");
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Content not allowed. You cannot use 18+ words, abusive words, or inappropriate language."
+                );
             }
 
             if (!cleaned.contains("ALLOW")) {
@@ -112,9 +127,7 @@ public class OpenAiService {
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
 
         try {
-            System.out.println("OPENAI_API_KEY PRESENT: " + (apiKey != null && !apiKey.isBlank()));
             ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
-            System.out.println("OPENAI RAW RESPONSE: " + response.getBody());
 
             if (response.getBody() == null) {
                 throw new RuntimeException("OpenAI response body is null");
@@ -145,7 +158,6 @@ public class OpenAiService {
         } catch (HttpStatusCodeException ex) {
             ex.printStackTrace();
             String responseBody = ex.getResponseBodyAsString();
-            System.out.println("OPENAI ERROR BODY: " + responseBody);
             throw new ResponseStatusException(
                     HttpStatus.BAD_GATEWAY,
                     "OpenAI API error: " + ex.getStatusCode() + " - " + responseBody
