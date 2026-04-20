@@ -11,7 +11,8 @@ import java.util.List;
 @RestController
 @CrossOrigin(origins = {
         "http://localhost:3000",
-        "https://test1-b157c.web.app"
+        "https://test1-b157c.web.app",
+        "https://test1-b157c.firebaseapp.com"
 })
 public class PostController {
 
@@ -22,8 +23,9 @@ public class PostController {
     }
 
     @GetMapping("/posts")
-    public List<Post> getPosts() {
-        return postService.getPosts();
+    public List<Post> getPosts(Authentication authentication) {
+        String username = authentication != null ? authentication.getName() : null;
+        return postService.getPosts(username);
     }
 
     @GetMapping("/posts/{id}")
