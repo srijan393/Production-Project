@@ -12,12 +12,14 @@ import com.socialhub.socialhub.repository.PostRepository;
 import com.socialhub.socialhub.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
 @RestController
+@Transactional
 @CrossOrigin(origins = {
         "http://localhost:3000",
         "https://test1-b157c.web.app",
