@@ -10,7 +10,6 @@ public class UserProfileResponse {
     private String interests;
     private long followersCount;
     private long followingCount;
-    private long postsCount;
 
     public UserProfileResponse() {
     }
@@ -23,8 +22,7 @@ public class UserProfileResponse {
             String bio,
             String interests,
             long followersCount,
-            long followingCount,
-            long postsCount
+            long followingCount
     ) {
         this.fullName = fullName;
         this.username = username;
@@ -34,7 +32,6 @@ public class UserProfileResponse {
         this.interests = interests;
         this.followersCount = followersCount;
         this.followingCount = followingCount;
-        this.postsCount = postsCount;
     }
 
     public String getFullName() {
@@ -99,13 +96,5 @@ public class UserProfileResponse {
 
     public void setFollowingCount(long followingCount) {
         this.followingCount = followingCount;
-    }
-
-    public long getPostsCount() {
-        return postsCount;
-    }
-
-    public void setPostsCount(long postsCount) {
-        this.postsCount = postsCount;
     }
 }
