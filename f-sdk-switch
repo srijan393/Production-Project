@@ -1,0 +1,52 @@
+[33m2c3da81[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m switch ai service to official openai sdk
+[33m786231d[m show real openai error from backend
+[33m5a108b7[m fix openai railway env variable
+[33m43765b0[m fix ai moderation errors
+[33m4bec0bf[m stop spring security from blocking app routes
+[33maf79a0c[m add AI moderation and best answer selection
+[33m9a6e0bd[m update security config for profile endpoint
+[33m8ae3cf4[m fix profile update security endpoint
+[33m4362bb6[m allow auth update profile through security
+[33m876b7ef[m move profile update to auth endpoint
+[33md36fa0c[m allow profile update request to reach controller
+[33mb359ab9[m fix profile update endpoint
+[33m53567f1[m switch profile update to post
+[33ma89772a[m fix security for profile update and change password
+[33m0e9240d[m add change password feature
+[33m68f8657[m add profile edit and remove role display
+[33me1dd0b2[m fix profile page and api auth
+[33m7ca4231[m fix user repository and profile endpoint
+[33m0b4d5ba[m add profile endpoint and username lookup
+[33meca0679[m fix post get by id and best answer endpoint
+[33mef7a59a[m fix post details and best answer endpoints
+[33md87da3b[m add comment endpoints for post details
+[33mc6cab1e[m fix openai service method signatures
+[33m8482a02[m fix broken OpenAiService syntax
+[33m220f60e[m use uppercase jwt env vars for railway
+[33ma753b67[m use uppercase jwt env vars for railway
+[33m3b7398f[m remove railway config
+[33mb65448a[m remove broken railway config
+[33m1fc56bf[m fix env and disable openai
+[33m63ba2be[m fix jwt service missing methods
+[33m566b99f[m fix jwt auth filter
+[33m66a1f4d[m allow post routes to reach controller
+[33m0eb0559[m fix security config for authenticated post requests
+[33m3584104[m handle ai moderation errors safely
+[33m7096268[m add openai moderation and ai best answer
+[33m6716290[m fix duplicate username issue and make auth case-insensitive safe
+[33m98bd3ca[m Make usernames case-insensitive and improve auth errors
+[33me205330[m Improve signup and login validation messages
+[33m418e37e[m Add strong password validation
+[33m0c6882b[m Connect real post details, comments, and best answer flow
+[33m939407f[m Fix JWT auth for protected post endpoints
+[33m20d4056[m Register JWT filter for authenticated post creation
+[33m2928187[m Connect create post and home feed to backend
+[33m2de0247[m Final fix: DB + CORS
+[33mc069c3b[m added service layer (Auth, Post, Comment) and fixed PostService save method
+[33m7d76b6f[m add api base path to post controller
+[33mf3c0ce1[m fixing db url
+[33mcfa4947[m working backend config
+[33mdd1437a[m railway port fix
+[33m1cb080d[m merge README with backend project
+[33md1305ba[m first commit
+[33m8f99080[m Initial commit

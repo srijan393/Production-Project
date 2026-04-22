@@ -8,4 +8,5 @@ import java.util.List;
 public interface PostRepository extends JpaRepository<Post, Long> {
     List<Post> findAllByOrderByCreatedAtDesc();
     long countByAuthorUsernameIgnoreCase(String authorUsername);
+    void deleteByAuthorUsernameIgnoreCase(String authorUsername);
 }

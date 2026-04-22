@@ -101,7 +101,11 @@ public class PostService {
         }
 
         try {
-            openAiService.moderateText(request.getTitle() + "\n" + request.getBody());
+            openAiService.moderateText(
+                    request.getTitle() + "\n" + request.getBody(),
+                    username,
+                    "POST"
+            );
         } catch (ResponseStatusException ex) {
             throw ex;
         } catch (Exception ex) {

@@ -1,11 +1,14 @@
 package com.socialhub.socialhub.service;
 
+import com.socialhub.socialhub.model.ModerationLog;
+import com.socialhub.socialhub.repository.ModerationLogRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.*;
+
 import java.util.List;
 import java.util.Map;
 
@@ -14,8 +17,13 @@ public class OpenAiService {
 
     private final String apiKey = System.getenv("OPENAI_API_KEY");
     private final RestTemplate restTemplate = new RestTemplate();
+    private final ModerationLogRepository moderationLogRepository;
 
-    public void moderateText(String text) {
+    public OpenAiService(ModerationLogRepository moderationLogRepository) {
+        this.moderationLogRepository = moderationLogRepository;
+    }
+
+    public void moderateText(String text, String username, String contentType) {
         if (text == null || text.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Content cannot be empty");
         }
@@ -52,6 +60,13 @@ public class OpenAiService {
             String cleaned = result.trim().toUpperCase();
 
             if (cleaned.contains("BLOCK")) {
+                ModerationLog log = new ModerationLog();
+                log.setUsername(username);
+                log.setContentType(contentType);
+                log.setContentPreview(text.length() > 300 ? text.substring(0, 300) : text);
+                log.setReason("Blocked by AI moderation for 18+, abusive, or inappropriate content");
+                moderationLogRepository.save(log);
+
                 throw new ResponseStatusException(
                         HttpStatus.BAD_REQUEST,
                         "Content not allowed. You cannot use 18+ words, abusive words, or inappropriate language."

@@ -42,7 +42,11 @@ public class CommentService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Answer must be at least 3 characters");
         }
 
-        openAiService.moderateText(request.getContent());
+        openAiService.moderateText(
+                request.getContent(),
+                username,
+                "COMMENT"
+        );
 
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
